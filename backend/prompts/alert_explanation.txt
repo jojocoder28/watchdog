@@ -1,0 +1,8 @@
+Convert the following technical alert data into a clear, actionable Slack-style notification.
+Your output must strictly follow this format (replace brackets with actual details based on the data):
+🚨 [Service] is experiencing [issue]. Impact: [X]. Recommended action: [Y].
+
+Alert Data:
+Incident ID: {incident_id}
+Triggered Rule: {rule_triggered}
+Created At: {created_at}

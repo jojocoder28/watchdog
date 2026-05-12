@@ -1,0 +1,9 @@
+Given the following incident metadata and log samples, write a concise 3-sentence executive summary of what happened. Do not include any greeting or conversational filler. Keep it plain English and professional.
+
+Incident Title: {title}
+Severity: {severity}
+Affected Service: {service}
+Start Time: {start_time}
+
+Log Samples:
+{logs}

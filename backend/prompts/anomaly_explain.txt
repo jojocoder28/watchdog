@@ -1,0 +1,4 @@
+An anomaly has been detected. Explain this anomaly pattern in plain language for an on-call engineer who is asking "What likely happened?". Keep your explanation to 2-3 sentences. Do not use overly complex jargon if a simpler term exists. Do not include conversational filler.
+
+Anomaly Data:
+{anomaly_data}

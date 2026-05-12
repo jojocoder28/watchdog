@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Watchdog — Intelligent Observability Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --blue:#0A84FF;--purple:#BF5AF2;--pink:#FF375F;--green:#30D158;--orange:#FF9F0A;
+  --text-primary:rgba(255,255,255,0.95);--text-secondary:rgba(255,255,255,0.55);
+  --glass-bg:rgba(255,255,255,0.05);--glass-border:rgba(255,255,255,0.12);
+}
+html,body{width:100%;height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:#000;color:var(--text-primary)}
+.orb{position:fixed;border-radius:50%;filter:blur(120px);opacity:0.35;pointer-events:none;animation:drift 20s ease-in-out infinite alternate}
+.orb1{width:600px;height:600px;background:var(--blue);top:-200px;left:-200px;animation-duration:22s}
+.orb2{width:500px;height:500px;background:var(--purple);bottom:-150px;right:-150px;animation-duration:18s;animation-delay:-5s}
+.orb3{width:400px;height:400px;background:var(--pink);top:40%;left:40%;animation-duration:25s;animation-delay:-10s}
+@keyframes drift{0%{transform:translate(0,0) scale(1)}100%{transform:translate(60px,80px) scale(1.15)}}
+.dot-grid{position:fixed;inset:0;background-image:radial-gradient(rgba(255,255,255,0.05) 1px,transparent 1px);background-size:32px 32px;pointer-events:none;z-index:0}
+.slides-container{position:relative;width:100vw;height:100vh;z-index:1}
+.slide{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px;opacity:0;transform:translateY(20px);transition:opacity 0.4s ease,transform 0.4s ease;pointer-events:none}
+.slide.active{opacity:1;transform:translateY(0);pointer-events:all}
+.slide.exit{opacity:0;transform:translateY(-10px)}
+.glass{background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:24px;backdrop-filter:blur(20px) saturate(180%);box-shadow:0 8px 32px rgba(0,0,0,0.4),inset 0 1px 0 rgba(255,255,255,0.15)}
+.gradient-text{background:linear-gradient(135deg,var(--blue),var(--purple),var(--pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.slide-counter{position:fixed;top:28px;right:40px;font-size:13px;font-weight:600;color:var(--text-secondary);letter-spacing:0.08em;z-index:100}
+.nav-arrow{position:fixed;top:50%;transform:translateY(-50%);background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:50%;width:48px;height:48px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:100;transition:all 0.2s;backdrop-filter:blur(20px)}
+.nav-arrow:hover{background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.3)}
+.nav-prev{left:20px}.nav-next{right:20px}
+.dots{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:100}
+.dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,0.2);cursor:pointer;transition:all 0.3s}
+.dot.active{background:#fff;width:24px;border-radius:4px}
+/* Particles */
+.particle{position:absolute;border-radius:50%;animation:float-particle linear infinite;pointer-events:none}
+@keyframes float-particle{0%{transform:translateY(0) translateX(0) scale(1);opacity:0.6}50%{opacity:0.3}100%{transform:translateY(-120px) translateX(40px) scale(0.5);opacity:0}}
+/* Slide 1 */
+.logo-svg{animation:pulse-logo 3s ease-in-out infinite}
+@keyframes pulse-logo{0%,100%{filter:drop-shadow(0 0 20px rgba(10,132,255,0.6))}50%{filter:drop-shadow(0 0 40px rgba(191,90,242,0.8))}}
+.pill{padding:8px 20px;border-radius:99px;font-size:13px;font-weight:600;border:1px solid var(--glass-border);background:var(--glass-bg);backdrop-filter:blur(10px)}
+/* Slide 2 */
+.stat-card{padding:24px;border-radius:16px;margin-bottom:12px;display:flex;gap:16px;align-items:center;transition:transform 0.3s}
+.stat-card:hover{transform:translateX(6px)}
+/* Slide 3 */
+.feature-card{padding:32px;flex:1;transition:transform 0.3s,box-shadow 0.3s;cursor:default}
+.feature-card:hover{transform:translateY(-6px)}
+.icon-box{width:52px;height:52px;border-radius:16px;display:flex;align-items:center;justify-content:center;margin-bottom:20px}
+@keyframes draw-line{from{stroke-dashoffset:200}to{stroke-dashoffset:0}}
+</style>
+</head>
+<body>
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+<div class="orb orb3"></div>
+<div class="dot-grid"></div>
+
+<div class="slide-counter" id="counter">01 / 12</div>
+
+<button class="nav-arrow nav-prev" onclick="changeSlide(-1)" aria-label="Previous">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+</button>
+<button class="nav-arrow nav-next" onclick="changeSlide(1)" aria-label="Next">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+</button>
+
+<div class="dots" id="dots"></div>
+
+<div class="slides-container" id="slides">
+
+<!-- SLIDE 01 -->
+<div class="slide active" id="slide-0">
+  <div style="position:absolute;inset:0;overflow:hidden;pointer-events:none" id="particles-s1"></div>
+  <svg class="logo-svg" width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-bottom:32px">
+    <defs><linearGradient id="lg1" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse"><stop stop-color="#0A84FF"/><stop offset="0.5" stop-color="#BF5AF2"/><stop offset="1" stop-color="#FF375F"/></linearGradient></defs>
+    <path d="M40 8 L68 20 L68 44 C68 58 56 70 40 74 C24 70 12 58 12 44 L12 20 Z" stroke="url(#lg1)" stroke-width="2.5" fill="rgba(10,132,255,0.08)"/>
+    <circle cx="40" cy="40" r="10" stroke="url(#lg1)" stroke-width="2.5" fill="none"/>
+    <circle cx="40" cy="40" r="4" fill="url(#lg1)"/>
+    <line x1="40" y1="24" x2="40" y2="30" stroke="url(#lg1)" stroke-width="2" stroke-linecap="round"/>
+    <line x1="40" y1="50" x2="40" y2="56" stroke="url(#lg1)" stroke-width="2" stroke-linecap="round"/>
+    <line x1="24" y1="40" x2="30" y2="40" stroke="url(#lg1)" stroke-width="2" stroke-linecap="round"/>
+    <line x1="50" y1="40" x2="56" y2="40" stroke="url(#lg1)" stroke-width="2" stroke-linecap="round"/>
+  </svg>
+  <h1 class="gradient-text" style="font-size:clamp(36px,5vw,64px);font-weight:900;letter-spacing:-2px;text-align:center;margin-bottom:12px">Intelligent Observability</h1>
+  <h2 style="font-size:clamp(20px,3vw,32px);font-weight:400;color:rgba(255,255,255,0.6);margin-bottom:16px;text-align:center">Event Watchdog Platform</h2>
+  <p style="font-size:16px;color:var(--text-secondary);margin-bottom:48px;text-align:center">AI-Powered SRE Intelligence, Locally Deployed</p>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
+    <span class="pill glass" style="color:var(--blue);border-color:rgba(10,132,255,0.3)">FastAPI</span>
+    <span class="pill glass" style="color:var(--purple);border-color:rgba(191,90,242,0.3)">React + TypeScript</span>
+    <span class="pill glass" style="color:var(--pink);border-color:rgba(255,55,95,0.3)">Gemini AI</span>
+  </div>
+</div>
+
+<!-- SLIDE 02 -->
+<div class="slide" id="slide-1">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:60px;width:100%;max-width:1200px;align-items:center">
+    <div>
+      <p style="color:var(--pink);font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:16px">THE PROBLEM</p>
+      <h2 style="font-size:clamp(24px,3vw,40px);font-weight:800;line-height:1.2;margin-bottom:32px">Modern Infrastructure Is Drowning in Noise</h2>
+      <div class="stat-card glass" style="border-left:3px solid var(--pink)">
+        <div style="width:44px;height:44px;border-radius:12px;background:rgba(255,55,95,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FF375F" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        </div>
+        <div><div style="font-size:24px;font-weight:800;color:white">10,000+ logs/min</div><div style="font-size:13px;color:var(--text-secondary);margin-top:4px">Unstructured, noisy data with no actionable signal</div></div>
+      </div>
+      <div class="stat-card glass" style="border-left:3px solid var(--orange)">
+        <div style="width:44px;height:44px;border-radius:12px;background:rgba(255,159,10,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FF9F0A" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <div><div style="font-size:24px;font-weight:800;color:white">73% false alerts</div><div style="font-size:13px;color:var(--text-secondary);margin-top:4px">Alert fatigue causes engineers to ignore real issues</div></div>
+      </div>
+      <div class="stat-card glass" style="border-left:3px solid var(--blue)">
+        <div style="width:44px;height:44px;border-radius:12px;background:rgba(10,132,255,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0A84FF" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div><div style="font-size:24px;font-weight:800;color:white">48 min avg MTTR</div><div style="font-size:13px;color:var(--text-secondary);margin-top:4px">Manual investigation wastes critical incident response time</div></div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:center">
+      <svg width="380" height="320" viewBox="0 0 380 320" fill="none">
+        <rect x="60" y="60" width="260" height="200" rx="16" fill="rgba(255,55,95,0.05)" stroke="rgba(255,55,95,0.2)" stroke-width="1.5"/>
+        <text x="190" y="40" fill="rgba(255,255,255,0.4)" font-size="12" text-anchor="middle" font-family="Inter">Log Stream</text>
+        <path d="M20 100 Q60 85 100 110 Q140 130 180 95 Q220 60 260 100 Q300 135 340 90" stroke="#FF375F" stroke-width="2" fill="none" opacity="0.8"/>
+        <path d="M20 140 Q70 120 110 155 Q150 185 190 145 Q230 108 270 150 Q310 188 360 140" stroke="#FF9F0A" stroke-width="2" fill="none" opacity="0.7"/>
+        <path d="M20 180 Q55 165 90 195 Q130 220 170 180 Q215 140 255 185 Q295 225 360 178" stroke="#FF375F" stroke-width="1.5" fill="none" opacity="0.5"/>
+        <path d="M20 220 Q80 200 120 235 Q165 265 200 220 Q240 175 285 225 Q325 265 360 215" stroke="#FF9F0A" stroke-width="1.5" fill="none" opacity="0.4"/>
+        <circle cx="100" cy="110" r="4" fill="#FF375F" opacity="0.9"/>
+        <circle cx="200" cy="145" r="4" fill="#FF9F0A" opacity="0.9"/>
+        <circle cx="270" cy="150" r="4" fill="#FF375F" opacity="0.9"/>
+        <circle cx="150" cy="185" r="3" fill="#FF9F0A"/>
+        <circle cx="310" cy="188" r="3" fill="#FF375F"/>
+        <text x="190" y="295" fill="rgba(255,55,95,0.7)" font-size="11" text-anchor="middle" font-family="Inter">Unstructured • Noisy • Overwhelming</text>
+      </svg>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 03 -->
+<div class="slide" id="slide-2">
+  <p style="color:var(--green);font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:16px">THE SOLUTION</p>
+  <h2 class="gradient-text" style="font-size:clamp(28px,4vw,52px);font-weight:900;text-align:center;margin-bottom:48px">One Platform. Full Clarity.</h2>
+  <div style="display:flex;gap:24px;width:100%;max-width:1100px;align-items:stretch;position:relative">
+    <div class="glass feature-card" style="box-shadow:0 8px 32px rgba(0,0,0,0.4),0 0 40px rgba(10,132,255,0.1)">
+      <div class="icon-box" style="background:linear-gradient(135deg,rgba(10,132,255,0.3),rgba(10,132,255,0.1));box-shadow:0 4px 16px rgba(10,132,255,0.3)">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0A84FF" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      </div>
+      <h3 style="font-size:20px;font-weight:700;margin-bottom:12px;color:var(--blue)">Smart Log Ingestion</h3>
+      <p style="color:var(--text-secondary);font-size:14px;line-height:1.7">Upload .log, .csv, or .json files. Background async processing with deduplication and schema normalization at scale.</p>
+    </div>
+    <div style="display:flex;align-items:center;flex-shrink:0">
+      <svg width="40" height="40" viewBox="0 0 40 40" fill="none"><defs><linearGradient id="arrowg" x1="0" y1="20" x2="40" y2="20"><stop stop-color="#0A84FF"/><stop offset="1" stop-color="#BF5AF2"/></linearGradient></defs><path d="M4 20 H30 M24 12 L36 20 L24 28" stroke="url(#arrowg)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <div class="glass feature-card" style="box-shadow:0 8px 32px rgba(0,0,0,0.4),0 0 40px rgba(191,90,242,0.1)">
+      <div class="icon-box" style="background:linear-gradient(135deg,rgba(191,90,242,0.3),rgba(191,90,242,0.1));box-shadow:0 4px 16px rgba(191,90,242,0.3)">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#BF5AF2" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      </div>
+      <h3 style="font-size:20px;font-weight:700;margin-bottom:12px;color:var(--purple)">AI Anomaly Detection</h3>
+      <p style="color:var(--text-secondary);font-size:14px;line-height:1.7">4-layer detection: Thresholds, Z-Score, Rolling Windows, and Isolation Forest ML — combined for maximum precision.</p>
+    </div>
+    <div style="display:flex;align-items:center;flex-shrink:0">
+      <svg width="40" height="40" viewBox="0 0 40 40" fill="none"><defs><linearGradient id="arrowg2" x1="0" y1="20" x2="40" y2="20"><stop stop-color="#BF5AF2"/><stop offset="1" stop-color="#30D158"/></linearGradient></defs><path d="M4 20 H30 M24 12 L36 20 L24 28" stroke="url(#arrowg2)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <div class="glass feature-card" style="box-shadow:0 8px 32px rgba(0,0,0,0.4),0 0 40px rgba(48,209,88,0.1)">
+      <div class="icon-box" style="background:linear-gradient(135deg,rgba(48,209,88,0.3),rgba(48,209,88,0.1));box-shadow:0 4px 16px rgba(48,209,88,0.3)">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#30D158" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      </div>
+      <h3 style="font-size:20px;font-weight:700;margin-bottom:12px;color:var(--green)">Instant Alerts & Summaries</h3>
+      <p style="color:var(--text-secondary);font-size:14px;line-height:1.7">Gemini AI generates root cause analysis. Multi-channel alerts via Slack, Discord & Email with retry queues.</p>
+    </div>
+  </div>
+</div>
+
+
+<!-- SLIDE 04 — Architecture -->
+<div class="slide" id="slide-3">
+  <div style="width:100%;max-width:1200px">
+    <p style="color:var(--blue);font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:8px">SYSTEM DESIGN</p>
+    <h2 style="font-size:clamp(24px,3vw,40px);font-weight:800;margin-bottom:32px">Architecture</h2>
+    <svg width="100%" viewBox="0 0 900 380" fill="none" style="max-height:340px">
+      <defs>
+        <linearGradient id="gb" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#0A84FF" stop-opacity=".3"/><stop offset="1" stop-color="#0A84FF" stop-opacity=".05"/></linearGradient>
+        <linearGradient id="gp" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#BF5AF2" stop-opacity=".3"/><stop offset="1" stop-color="#BF5AF2" stop-opacity=".05"/></linearGradient>
+        <linearGradient id="gg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#30D158" stop-opacity=".3"/><stop offset="1" stop-color="#30D158" stop-opacity=".05"/></linearGradient>
+        <linearGradient id="go" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#FF9F0A" stop-opacity=".3"/><stop offset="1" stop-color="#FF9F0A" stop-opacity=".05"/></linearGradient>
+      </defs>
+      <!-- React Frontend -->
+      <rect x="300" y="10" width="300" height="70" rx="14" fill="url(#gb)" stroke="rgba(10,132,255,0.4)" stroke-width="1.5"/>
+      <text x="450" y="42" fill="#0A84FF" font-size="13" font-weight="700" text-anchor="middle" font-family="Inter">React Frontend</text>
+      <text x="450" y="62" fill="rgba(255,255,255,0.45)" font-size="11" text-anchor="middle" font-family="Inter">TypeScript · Vite · TanStack Query</text>
+      <!-- FastAPI -->
+      <rect x="270" y="155" width="360" height="70" rx="14" fill="url(#gp)" stroke="rgba(191,90,242,0.4)" stroke-width="1.5"/>
+      <text x="450" y="187" fill="#BF5AF2" font-size="13" font-weight="700" text-anchor="middle" font-family="Inter">FastAPI Backend</text>
+      <text x="450" y="207" fill="rgba(255,255,255,0.45)" font-size="11" text-anchor="middle" font-family="Inter">Python 3.11 · SQLAlchemy · Pydantic v2</text>
+      <!-- Gemini -->
+      <rect x="50" y="155" width="180" height="70" rx="14" fill="url(#go)" stroke="rgba(255,159,10,0.4)" stroke-width="1.5"/>
+      <text x="140" y="187" fill="#FF9F0A" font-size="13" font-weight="700" text-anchor="middle" font-family="Inter">Gemini AI</text>
+      <text x="140" y="207" fill="rgba(255,255,255,0.45)" font-size="11" text-anchor="middle" font-family="Inter">2.5 Flash · RCA · Summaries</text>
+      <!-- Webhook -->
+      <rect x="670" y="155" width="190" height="70" rx="14" fill="url(#gg)" stroke="rgba(48,209,88,0.4)" stroke-width="1.5"/>
+      <text x="765" y="187" fill="#30D158" font-size="13" font-weight="700" text-anchor="middle" font-family="Inter">Webhook Engine</text>
+      <text x="765" y="207" fill="rgba(255,255,255,0.45)" font-size="11" text-anchor="middle" font-family="Inter">Slack · Discord · Email</text>
+      <!-- SQLite -->
+      <rect x="270" y="300" width="170" height="65" rx="14" fill="url(#gb)" stroke="rgba(10,132,255,0.3)" stroke-width="1.5"/>
+      <text x="355" y="330" fill="#0A84FF" font-size="13" font-weight="700" text-anchor="middle" font-family="Inter">SQLite DB</text>
+      <text x="355" y="350" fill="rgba(255,255,255,0.45)" font-size="11" text-anchor="middle" font-family="Inter">Logs · Incidents · Users</text>
+      <!-- Log Gen -->
+      <rect x="460" y="300" width="170" height="65" rx="14" fill="url(#gp)" stroke="rgba(191,90,242,0.3)" stroke-width="1.5"/>
+      <text x="545" y="330" fill="#BF5AF2" font-size="13" font-weight="700" text-anchor="middle" font-family="Inter">Log Generator</text>
+      <text x="545" y="350" fill="rgba(255,255,255,0.45)" font-size="11" text-anchor="middle" font-family="Inter">50K+ Synthetic Logs</text>
+      <!-- Connectors -->
+      <line x1="450" y1="80" x2="450" y2="155" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" stroke-dasharray="5,4"/>
+      <line x1="270" y1="190" x2="230" y2="190" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" stroke-dasharray="5,4"/>
+      <line x1="630" y1="190" x2="670" y2="190" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" stroke-dasharray="5,4"/>
+      <line x1="355" y1="300" x2="400" y2="225" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" stroke-dasharray="5,4"/>
+      <line x1="545" y1="300" x2="500" y2="225" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" stroke-dasharray="5,4"/>
+    </svg>
+  </div>
+</div>
+
+<!-- SLIDE 05 — Key Features 1 -->
+<div class="slide" id="slide-4">
+  <p style="color:var(--purple);font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:12px">CAPABILITIES</p>
+  <h2 style="font-size:clamp(24px,3vw,44px);font-weight:800;margin-bottom:32px">What It Does</h2>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;width:100%;max-width:1000px">
+    <div class="glass" style="padding:28px;border-radius:20px">
+      <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,rgba(10,132,255,0.4),rgba(10,132,255,0.1));display:flex;align-items:center;justify-content:center;margin-bottom:16px">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0A84FF" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      </div>
+      <h3 style="font-size:17px;font-weight:700;color:var(--blue);margin-bottom:12px">Log Ingestion Engine</h3>
+      <p style="color:var(--text-secondary);font-size:13px;line-height:1.8">• Accepts .log / .csv / .json<br>• 50,000+ synthetic logs<br>• Async batch processing<br>• Deduplication by hash</p>
+    </div>
+    <div class="glass" style="padding:28px;border-radius:20px">
+      <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,rgba(191,90,242,0.4),rgba(191,90,242,0.1));display:flex;align-items:center;justify-content:center;margin-bottom:16px">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#BF5AF2" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      </div>
+      <h3 style="font-size:17px;font-weight:700;color:var(--purple);margin-bottom:12px">Anomaly Detection</h3>
+      <p style="color:var(--text-secondary);font-size:13px;line-height:1.8">• Threshold rules engine<br>• Z-Score + Isolation Forest<br>• Rolling window spike detection<br>• Confidence scoring</p>
+    </div>
+    <div class="glass" style="padding:28px;border-radius:20px">
+      <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,rgba(255,55,95,0.4),rgba(255,55,95,0.1));display:flex;align-items:center;justify-content:center;margin-bottom:16px">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF375F" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+      </div>
+      <h3 style="font-size:17px;font-weight:700;color:var(--pink);margin-bottom:12px">Gemini AI Integration</h3>
+      <p style="color:var(--text-secondary);font-size:13px;line-height:1.8">• Incident summarization<br>• Root cause hypotheses<br>• Human-readable alerts<br>• Gemini 2.5 Flash</p>
+    </div>
+    <div class="glass" style="padding:28px;border-radius:20px">
+      <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,rgba(48,209,88,0.4),rgba(48,209,88,0.1));display:flex;align-items:center;justify-content:center;margin-bottom:16px">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#30D158" stroke-width="2"><path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+      </div>
+      <h3 style="font-size:17px;font-weight:700;color:var(--green);margin-bottom:12px">Webhook Alerts</h3>
+      <p style="color:var(--text-secondary);font-size:13px;line-height:1.8">• Slack / Discord / Email sim<br>• Retry queue (3x backoff)<br>• Full delivery history<br>• Status tracking</p>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 06 — Dashboard Showcase -->
+<div class="slide" id="slide-5">
+  <p style="color:var(--blue);font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:12px">UI / UX</p>
+  <h2 style="font-size:clamp(24px,3vw,44px);font-weight:800;margin-bottom:24px">The Dashboard</h2>
+  <div class="glass" style="width:100%;max-width:1000px;padding:24px;border-radius:24px;box-shadow:0 0 60px rgba(10,132,255,0.15)">
+    <div style="display:grid;grid-template-columns:56px 1fr 160px;gap:16px;height:300px">
+      <!-- Sidebar -->
+      <div style="background:rgba(255,255,255,0.03);border-radius:14px;padding:12px;display:flex;flex-direction:column;align-items:center;gap:16px">
+        <div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#0A84FF,#BF5AF2)"></div>
+        <div style="width:6px;height:6px;border-radius:50%;background:#0A84FF"></div>
+        <div style="width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.2)"></div>
+        <div style="width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.2)"></div>
+        <div style="width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.2)"></div>
+        <div style="width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.2)"></div>
+      </div>
+      <!-- Chart -->
+      <div style="background:rgba(255,255,255,0.03);border-radius:14px;padding:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="font-size:11px;color:var(--text-secondary);font-weight:600">Error Rate / min — Last 24h</div>
+          <div style="display:flex;gap:10px;font-size:10px">
+            <span style="color:#0A84FF">● Errors</span>
+            <span style="color:#FF9F0A;opacity:.8">● Warnings</span>
+          </div>
+        </div>
+        <svg width="100%" height="190" viewBox="0 0 500 190">
+          <defs>
+            <linearGradient id="chartfill" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#0A84FF" stop-opacity=".35"/><stop offset="1" stop-color="#0A84FF" stop-opacity="0"/></linearGradient>
+          </defs>
+          <!-- Y-axis grid lines and labels -->
+          <line x1="36" y1="10" x2="36" y2="158" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+          <line x1="36" y1="10" x2="500" y2="10" stroke="rgba(255,255,255,0.05)" stroke-width="1" stroke-dasharray="4,4"/>
+          <line x1="36" y1="46" x2="500" y2="46" stroke="rgba(255,255,255,0.05)" stroke-width="1" stroke-dasharray="4,4"/>
+          <line x1="36" y1="82" x2="500" y2="82" stroke="rgba(255,255,255,0.05)" stroke-width="1" stroke-dasharray="4,4"/>
+          <line x1="36" y1="118" x2="500" y2="118" stroke="rgba(255,255,255,0.05)" stroke-width="1" stroke-dasharray="4,4"/>
+          <line x1="36" y1="158" x2="500" y2="158" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+          <text x="30" y="13" fill="rgba(255,255,255,0.3)" font-size="9" text-anchor="end" font-family="Inter">120</text>
+          <text x="30" y="49" fill="rgba(255,255,255,0.3)" font-size="9" text-anchor="end" font-family="Inter">90</text>
+          <text x="30" y="85" fill="rgba(255,255,255,0.3)" font-size="9" text-anchor="end" font-family="Inter">60</text>
+          <text x="30" y="121" fill="rgba(255,255,255,0.3)" font-size="9" text-anchor="end" font-family="Inter">30</text>
+          <text x="30" y="161" fill="rgba(255,255,255,0.3)" font-size="9" text-anchor="end" font-family="Inter">0</text>
+          <!-- X-axis time labels -->
+          <text x="40" y="175" fill="rgba(255,255,255,0.3)" font-size="9" font-family="Inter">00:00</text>
+          <text x="112" y="175" fill="rgba(255,255,255,0.3)" font-size="9" font-family="Inter">04:00</text>
+          <text x="189" y="175" fill="rgba(255,255,255,0.3)" font-size="9" font-family="Inter">08:00</text>
+          <text x="266" y="175" fill="rgba(255,255,255,0.3)" font-size="9" font-family="Inter">12:00</text>
+          <text x="343" y="175" fill="rgba(255,255,255,0.3)" font-size="9" font-family="Inter">16:00</text>
+          <text x="420" y="175" fill="rgba(255,255,255,0.3)" font-size="9" font-family="Inter">20:00</text>
+          <!-- Area fill under error line -->
+          <path d="M40,148 L58,143 L77,145 L95,140 L114,136 L132,142 L150,130 L169,118 L187,122 L206,110 L224,97 L242,88 L261,95 L279,103 L298,55 L316,22 L335,40 L353,68 L371,75 L390,88 L408,95 L427,100 L445,108 L464,103 L482,112 L500,105 L500,158 L40,158 Z" fill="url(#chartfill)"/>
+          <!-- Error line -->
+          <polyline points="40,148 58,143 77,145 95,140 114,136 132,142 150,130 169,118 187,122 206,110 224,97 242,88 261,95 279,103 298,55 316,22 335,40 353,68 371,75 390,88 408,95 427,100 445,108 464,103 482,112 500,105" stroke="#0A84FF" stroke-width="2" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+          <!-- Warning line (dashed) -->
+          <polyline points="40,155 58,150 77,153 95,148 114,145 132,150 150,140 169,132 187,136 206,126 224,118 242,112 261,120 279,128 298,92 316,68 335,82 353,104 371,110 390,120 408,128 427,132 445,138 464,134 482,140 500,136" stroke="#FF9F0A" stroke-width="1.5" fill="none" stroke-dasharray="4,3" opacity=".7" stroke-linejoin="round"/>
+          <!-- Spike annotation -->
+          <line x1="316" y1="22" x2="316" y2="158" stroke="rgba(255,55,95,0.4)" stroke-width="1" stroke-dasharray="3,3"/>
+          <rect x="298" y="26" width="56" height="16" rx="4" fill="rgba(255,55,95,0.15)" stroke="rgba(255,55,95,0.4)" stroke-width="1"/>
+          <text x="326" y="38" fill="#FF375F" font-size="9" text-anchor="middle" font-family="Inter" font-weight="700">INCIDENT</text>
+          <!-- Data dots at key points -->
+          <circle cx="316" cy="22" r="3.5" fill="#FF375F" opacity=".9"/>
+          <circle cx="242" cy="88" r="2.5" fill="#0A84FF"/>
+          <circle cx="500" cy="105" r="2.5" fill="#0A84FF"/>
+        </svg>
+      </div>
+      <!-- KPI Stack -->
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="background:rgba(10,132,255,0.1);border:1px solid rgba(10,132,255,0.2);border-radius:12px;padding:12px">
+          <div style="font-size:10px;color:var(--text-secondary)">Total Logs</div>
+          <div style="font-size:20px;font-weight:800;color:#0A84FF">52,841</div>
+        </div>
+        <div style="background:rgba(255,55,95,0.1);border:1px solid rgba(255,55,95,0.2);border-radius:12px;padding:12px">
+          <div style="font-size:10px;color:var(--text-secondary)">Incidents</div>
+          <div style="font-size:20px;font-weight:800;color:#FF375F">7</div>
+        </div>
+        <div style="background:rgba(255,159,10,0.1);border:1px solid rgba(255,159,10,0.2);border-radius:12px;padding:12px">
+          <div style="font-size:10px;color:var(--text-secondary)">Alerts Sent</div>
+          <div style="font-size:20px;font-weight:800;color:#FF9F0A">23</div>
+        </div>
+        <div style="background:rgba(48,209,88,0.1);border:1px solid rgba(48,209,88,0.2);border-radius:12px;padding:12px">
+          <div style="font-size:10px;color:var(--text-secondary)">Avg MTTR</div>
+          <div style="font-size:20px;font-weight:800;color:#30D158">8.4m</div>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;margin-top:16px">
+      <div style="flex:1;background:rgba(255,255,255,0.03);border-radius:10px;padding:10px 14px">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-secondary);margin-bottom:6px"><span>auth-service</span><span style="color:#30D158">99.1%</span></div>
+        <div style="height:4px;background:rgba(255,255,255,0.08);border-radius:99px"><div style="height:100%;width:99%;background:#30D158;border-radius:99px"></div></div>
+      </div>
+      <div style="flex:1;background:rgba(255,255,255,0.03);border-radius:10px;padding:10px 14px">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-secondary);margin-bottom:6px"><span>payment-api</span><span style="color:#FF9F0A">74.3%</span></div>
+        <div style="height:4px;background:rgba(255,255,255,0.08);border-radius:99px"><div style="height:100%;width:74%;background:#FF9F0A;border-radius:99px"></div></div>
+      </div>
+      <div style="flex:1;background:rgba(255,255,255,0.03);border-radius:10px;padding:10px 14px">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-secondary);margin-bottom:6px"><span>db-primary</span><span style="color:#0A84FF">86.7%</span></div>
+        <div style="height:4px;background:rgba(255,255,255,0.08);border-radius:99px"><div style="height:100%;width:87%;background:#0A84FF;border-radius:99px"></div></div>
+      </div>
+    </div>
+    <!-- Live log feed -->
+    <div style="margin-top:12px;background:rgba(0,0,0,0.3);border-radius:10px;padding:10px 14px;font-family:'JetBrains Mono',monospace;font-size:10px;line-height:1.9">
+      <div><span style="color:rgba(255,255,255,0.3)">14:32:07</span> <span style="color:#FF375F">[ERROR]</span> <span style="color:#BF5AF2">payment-api</span> <span style="color:rgba(255,255,255,0.6)">Connection pool exhausted — max=20 active=20</span></div>
+      <div><span style="color:rgba(255,255,255,0.3)">14:32:09</span> <span style="color:#FF9F0A">[WARN] </span> <span style="color:#BF5AF2">db-primary </span> <span style="color:rgba(255,255,255,0.6)">Slow query detected: 2340ms on orders table</span></div>
+      <div><span style="color:rgba(255,255,255,0.3)">14:32:11</span> <span style="color:#FF375F">[ERROR]</span> <span style="color:#BF5AF2">payment-api</span> <span style="color:rgba(255,255,255,0.6)">Timeout awaiting DB connection after 5000ms</span></div>
+      <div><span style="color:rgba(255,255,255,0.3)">14:32:14</span> <span style="color:#30D158">[INFO] </span> <span style="color:#0A84FF">watchdog  </span> <span style="color:rgba(255,255,255,0.6)">Incident #INC-0047 created — severity: HIGH</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 07 — Tech Stack -->
+<div class="slide" id="slide-6">
+  <p style="color:var(--orange);font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:12px">ENGINEERING</p>
+  <h2 style="font-size:clamp(24px,3vw,44px);font-weight:800;margin-bottom:36px">Built With</h2>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;width:100%;max-width:1000px">
+    <div class="glass" style="padding:20px 16px;border-radius:16px;border-left:3px solid #0A84FF"><div style="font-size:15px;font-weight:700;color:white;margin-bottom:4px">FastAPI</div><div style="font-size:12px;color:var(--text-secondary)">Async Python API</div></div>
+    <div class="glass" style="padding:20px 16px;border-radius:16px;border-left:3px solid #BF5AF2"><div style="font-size:15px;font-weight:700;color:white;margin-bottom:4px">Python 3.11</div><div style="font-size:12px;color:var(--text-secondary)">Runtime & ML engine</div></div>
+    <div class="glass" style="padding:20px 16px;border-radius:16px;border-left:3px solid #0A84FF"><div style="font-size:15px;font-weight:700;color:white;margin-bottom:4px">React 18</div><div style="font-size:12px;color:var(--text-secondary)">Frontend framework</div></div>
+    <div class="glass" style="padding:20px 16px;border-radius:16px;border-left:3px solid #FF9F0A"><div style="font-size:15px;font-weight:700;color:white;margin-bottom:4px">TypeScript</div><div style="font-size:12px;color:var(--text-secondary)">Type-safe frontend</div></div>
+    <div class="glass" style="padding:20px 16px;border-radius:16px;border-left:3px solid #30D158"><div style="font-size:15px;font-weight:700;color:white;margin-bottom:4px">SQLite</div><div style="font-size:12px;color:var(--text-secondary)">Persistent storage</div></div>
+    <div class="glass" style="padding:20px 16px;border-radius:16px;border-left:3px solid #FF375F"><div style="font-size:15px;font-weight:700;color:white;margin-bottom:4px">Gemini AI</div><div style="font-size:12px;color:var(--text-secondary)">RCA &amp; summarization</div></div>
+    <div class="glass" style="padding:20px 16px;border-radius:16px;border-left:3px solid #0A84FF"><div style="font-size:15px;font-weight:700;color:white;margin-bottom:4px">Docker</div><div style="font-size:12px;color:var(--text-secondary)">Container deployment</div></div>
+    <div class="glass" style="padding:20px 16px;border-radius:16px;border-left:3px solid #BF5AF2"><div style="font-size:15px;font-weight:700;color:white;margin-bottom:4px">Recharts</div><div style="font-size:12px;color:var(--text-secondary)">Data visualization</div></div>
+  </div>
+</div>
+
+<!-- SLIDE 08 — DB Schema -->
+<div class="slide" id="slide-7">
+  <p style="color:var(--green);font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:12px">PERSISTENCE</p>
+  <h2 style="font-size:clamp(22px,3vw,40px);font-weight:800;margin-bottom:28px">Data Model</h2>
+  <div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center;max-width:1100px;width:100%">
+    <div class="glass" style="padding:20px 18px;border-radius:16px;min-width:160px">
+      <div style="font-size:13px;font-weight:800;color:var(--blue);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.08)">users</div>
+      <div style="font-size:12px;color:var(--text-secondary);line-height:2"><span style="color:#0A84FF">id</span> PK<br>email<br>hashed_password<br>role</div>
+    </div>
+    <div style="display:flex;align-items:center"><svg width="24" height="2" viewBox="0 0 24 2"><line x1="0" y1="1" x2="24" y2="1" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" stroke-dasharray="4,3"/></svg></div>
+    <div class="glass" style="padding:20px 18px;border-radius:16px;min-width:160px">
+      <div style="font-size:13px;font-weight:800;color:var(--blue);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.08)">logs</div>
+      <div style="font-size:12px;color:var(--text-secondary);line-height:2"><span style="color:#0A84FF">id</span> PK<br>timestamp<br>service_name<br>level · message</div>
+    </div>
+    <div style="display:flex;align-items:center"><svg width="24" height="2" viewBox="0 0 24 2"><line x1="0" y1="1" x2="24" y2="1" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" stroke-dasharray="4,3"/></svg></div>
+    <div class="glass" style="padding:20px 18px;border-radius:16px;min-width:160px">
+      <div style="font-size:13px;font-weight:800;color:var(--purple);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.08)">incidents</div>
+      <div style="font-size:12px;color:var(--text-secondary);line-height:2"><span style="color:#0A84FF">id</span> PK<br>title · severity<br>ai_analysis<br>status</div>
+    </div>
+    <div style="display:flex;align-items:center"><svg width="24" height="2" viewBox="0 0 24 2"><line x1="0" y1="1" x2="24" y2="1" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" stroke-dasharray="4,3"/></svg></div>
+    <div class="glass" style="padding:20px 18px;border-radius:16px;min-width:160px">
+      <div style="font-size:13px;font-weight:800;color:var(--orange);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.08)">alerts</div>
+      <div style="font-size:12px;color:var(--text-secondary);line-height:2"><span style="color:#0A84FF">id</span> PK<br><span style="color:#BF5AF2">incident_id</span> FK<br>channel<br>status</div>
+    </div>
+    <div style="display:flex;align-items:center"><svg width="24" height="2" viewBox="0 0 24 2"><line x1="0" y1="1" x2="24" y2="1" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" stroke-dasharray="4,3"/></svg></div>
+    <div class="glass" style="padding:20px 18px;border-radius:16px;min-width:160px">
+      <div style="font-size:13px;font-weight:800;color:var(--green);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.08)">webhook_history</div>
+      <div style="font-size:12px;color:var(--text-secondary);line-height:2"><span style="color:#0A84FF">id</span> PK<br><span style="color:#BF5AF2">alert_id</span> FK<br>target_type<br>attempt_count</div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 09 — AI Integration -->
+<div class="slide" id="slide-8">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:48px;max-width:1100px;width:100%;align-items:center">
+    <div>
+      <p style="color:var(--purple);font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:12px">INTELLIGENCE</p>
+      <h2 style="font-size:clamp(22px,3vw,40px);font-weight:800;margin-bottom:28px">Gemini AI in the Loop</h2>
+      <svg viewBox="0 0 340 300" width="100%">
+        <defs><marker id="arr" markerWidth="8" markerHeight="8" refX="4" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="rgba(191,90,242,0.6)"/></marker></defs>
+        <rect x="80" y="10" width="180" height="44" rx="10" fill="rgba(191,90,242,0.1)" stroke="rgba(191,90,242,0.3)" stroke-width="1.5"/>
+        <text x="170" y="37" fill="#BF5AF2" font-size="12" font-weight="700" text-anchor="middle" font-family="Inter">Incident Detected</text>
+        <line x1="170" y1="54" x2="170" y2="80" stroke="rgba(191,90,242,0.4)" stroke-width="1.5" marker-end="url(#arr)"/>
+        <rect x="80" y="80" width="180" height="44" rx="10" fill="rgba(10,132,255,0.1)" stroke="rgba(10,132,255,0.3)" stroke-width="1.5"/>
+        <text x="170" y="107" fill="#0A84FF" font-size="12" font-weight="700" text-anchor="middle" font-family="Inter">Log Sample Extracted</text>
+        <line x1="170" y1="124" x2="170" y2="150" stroke="rgba(10,132,255,0.4)" stroke-width="1.5" marker-end="url(#arr)"/>
+        <rect x="80" y="150" width="180" height="44" rx="10" fill="rgba(255,159,10,0.1)" stroke="rgba(255,159,10,0.3)" stroke-width="1.5"/>
+        <text x="170" y="177" fill="#FF9F0A" font-size="12" font-weight="700" text-anchor="middle" font-family="Inter">Gemini Prompt</text>
+        <line x1="170" y1="194" x2="170" y2="220" stroke="rgba(48,209,88,0.4)" stroke-width="1.5" marker-end="url(#arr)"/>
+        <rect x="80" y="220" width="180" height="44" rx="10" fill="rgba(48,209,88,0.1)" stroke="rgba(48,209,88,0.3)" stroke-width="1.5"/>
+        <text x="170" y="247" fill="#30D158" font-size="12" font-weight="700" text-anchor="middle" font-family="Inter">AI Response</text>
+      </svg>
+    </div>
+    <div>
+      <div class="glass" style="padding:28px;border-radius:20px;border-color:rgba(191,90,242,0.25);box-shadow:0 0 40px rgba(191,90,242,0.08)">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+          <div style="width:8px;height:8px;border-radius:50%;background:#BF5AF2;animation:pulse-logo 2s infinite"></div>
+          <span style="font-size:11px;font-weight:700;color:#BF5AF2;letter-spacing:0.08em">GEMINI ANALYSIS</span>
+        </div>
+        <p id="ai-text" data-text="🔴 HIGH — payment-api connection pool exhausted (20/20 active). Timeline: pool saturation began at 14:29 (+3 min post-deploy), first timeout at 14:32. Root cause: DB migration at 14:26 added 3 heavy JOIN queries, increasing avg query time from 48ms → 2,340ms. Immediate action: raise pool.max_overflow to 10. Long-term: index orders.created_at and paginate the dashboard aggregation query." style="font-size:13px;color:rgba(255,255,255,0.85);line-height:1.8;font-style:italic;min-height:100px">🔴 HIGH — payment-api connection pool exhausted (20/20 active). Timeline: pool saturation began at 14:29 (+3 min post-deploy), first timeout at 14:32. Root cause: DB migration at 14:26 added 3 heavy JOIN queries, increasing avg query time from 48ms → 2,340ms. Immediate action: raise pool.max_overflow to 10. Long-term: index orders.created_at and paginate the dashboard aggregation query.</p>
+        <div style="margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.08);font-size:11px;color:rgba(191,90,242,0.6);font-weight:600">✦ Powered by Gemini 2.5 Flash</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 10 — Detection Engine -->
+<div class="slide" id="slide-9">
+  <p style="color:var(--pink);font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:12px">ML ENGINE</p>
+  <h2 style="font-size:clamp(22px,3vw,40px);font-weight:800;margin-bottom:28px">4-Layer Detection Engine</h2>
+  <div style="display:flex;flex-direction:column;gap:12px;width:100%;max-width:900px">
+    <div class="glass" style="padding:20px 24px;border-radius:16px;border-left:3px solid var(--blue);display:flex;align-items:center;gap:20px">
+      <div style="width:36px;height:36px;border-radius:10px;background:rgba(10,132,255,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;font-weight:800;color:#0A84FF">1</div>
+      <div style="flex:1"><div style="font-size:15px;font-weight:700;color:white;margin-bottom:4px">Threshold Rules</div><div style="font-size:13px;color:var(--text-secondary)">ERROR rate &gt; 50 in 5min → immediate INCIDENT creation</div></div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#0A84FF;background:rgba(10,132,255,0.1);padding:6px 12px;border-radius:8px;white-space:nowrap">err/min &gt; 50</div>
+    </div>
+    <div class="glass" style="padding:20px 24px;border-radius:16px;border-left:3px solid var(--purple);display:flex;align-items:center;gap:20px">
+      <div style="width:36px;height:36px;border-radius:10px;background:rgba(191,90,242,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;font-weight:800;color:#BF5AF2">2</div>
+      <div style="flex:1"><div style="font-size:15px;font-weight:700;color:white;margin-bottom:4px">Rolling Window</div><div style="font-size:13px;color:var(--text-secondary)">200% spike vs previous 5-minute window triggers alert</div></div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#BF5AF2;background:rgba(191,90,242,0.1);padding:6px 12px;border-radius:8px;white-space:nowrap">spike &gt; 200%</div>
+    </div>
+    <div class="glass" style="padding:20px 24px;border-radius:16px;border-left:3px solid var(--orange);display:flex;align-items:center;gap:20px">
+      <div style="width:36px;height:36px;border-radius:10px;background:rgba(255,159,10,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;font-weight:800;color:#FF9F0A">3</div>
+      <div style="flex:1"><div style="font-size:15px;font-weight:700;color:white;margin-bottom:4px">Z-Score Analysis</div><div style="font-size:13px;color:var(--text-secondary)">Statistical outlier detection, Z &gt; 2.5 = anomaly with confidence score</div></div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#FF9F0A;background:rgba(255,159,10,0.1);padding:6px 12px;border-radius:8px;white-space:nowrap">Z-score &gt; 2.5</div>
+    </div>
+    <div class="glass" style="padding:20px 24px;border-radius:16px;border-left:3px solid var(--green);display:flex;align-items:center;gap:20px">
+      <div style="width:36px;height:36px;border-radius:10px;background:rgba(48,209,88,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;font-weight:800;color:#30D158">4</div>
+      <div style="flex:1"><div style="font-size:15px;font-weight:700;color:white;margin-bottom:4px">Isolation Forest</div><div style="font-size:13px;color:var(--text-secondary)">ML-based structural outlier detection via scikit-learn, unsupervised</div></div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#30D158;background:rgba(48,209,88,0.1);padding:6px 12px;border-radius:8px;white-space:nowrap">sklearn ML</div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 11 — Deployment -->
+<div class="slide" id="slide-10">
+  <p style="color:var(--green);font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:12px">DEVOPS</p>
+  <h2 style="font-size:clamp(22px,3vw,44px);font-weight:800;margin-bottom:28px">Ship It</h2>
+  <div class="glass" style="padding:32px;border-radius:24px;max-width:680px;width:100%;background:rgba(0,0,0,0.5);border-color:rgba(48,209,88,0.2);box-shadow:0 0 60px rgba(48,209,88,0.08)">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px">
+      <div style="width:12px;height:12px;border-radius:50%;background:#FF375F"></div>
+      <div style="width:12px;height:12px;border-radius:50%;background:#FF9F0A"></div>
+      <div style="width:12px;height:12px;border-radius:50%;background:#30D158"></div>
+      <span style="margin-left:8px;font-size:12px;color:var(--text-secondary)">terminal</span>
+    </div>
+    <div id="terminal-lines" style="min-height:180px"></div>
+  </div>
+  <div style="display:flex;gap:12px;margin-top:24px;flex-wrap:wrap;justify-content:center">
+    <span class="pill glass" style="color:var(--blue);border-color:rgba(10,132,255,0.3)">Docker</span>
+    <span class="pill glass" style="color:var(--green);border-color:rgba(48,209,88,0.3)">One Command</span>
+    <span class="pill glass" style="color:var(--purple);border-color:rgba(191,90,242,0.3)">Fully Local</span>
+  </div>
+</div>
+
+<!-- SLIDE 12 — Closing -->
+<div class="slide" id="slide-11">
+  <div style="position:absolute;inset:0;overflow:hidden;pointer-events:none" id="particles-s12"></div>
+  <h1 style="font-size:clamp(36px,6vw,80px);font-weight:900;letter-spacing:-3px;text-align:center;line-height:1.1;margin-bottom:16px">
+    <span class="gradient-text">Built for SREs.</span>
+  </h1>
+  <h2 style="font-size:clamp(18px,3vw,36px);font-weight:400;color:rgba(255,255,255,0.5);text-align:center;margin-bottom:48px">Powered by AI. Deployed Locally.</h2>
+  <div class="glass" style="display:flex;gap:0;border-radius:20px;overflow:hidden;margin-bottom:48px">
+    <div style="padding:28px 36px;text-align:center;border-right:1px solid rgba(255,255,255,0.08)">
+      <div style="font-size:36px;font-weight:900;color:var(--blue)">11</div>
+      <div style="font-size:12px;color:var(--text-secondary);margin-top:4px">Phases Shipped</div>
+    </div>
+    <div style="padding:28px 36px;text-align:center;border-right:1px solid rgba(255,255,255,0.08)">
+      <div style="font-size:36px;font-weight:900;color:var(--purple)">52K+</div>
+      <div style="font-size:12px;color:var(--text-secondary);margin-top:4px">Logs Ingested</div>
+    </div>
+    <div style="padding:28px 36px;text-align:center;border-right:1px solid rgba(255,255,255,0.08)">
+      <div style="font-size:36px;font-weight:900;color:var(--orange)">83%</div>
+      <div style="font-size:12px;color:var(--text-secondary);margin-top:4px">Noise Reduction</div>
+    </div>
+    <div style="padding:28px 36px;text-align:center">
+      <div style="font-size:36px;font-weight:900;color:var(--green)">8.4m</div>
+      <div style="font-size:12px;color:var(--text-secondary);margin-top:4px">Avg MTTR</div>
+    </div>
+  </div>
+  <p style="color:var(--text-secondary);font-size:14px;margin-bottom:36px">github.com/jojocoder28/watchdog · Built with ❤️ using FastAPI + React + Gemini AI</p>
+  <div style="font-size:clamp(20px,3vw,36px);color:rgba(255,255,255,0.35);font-weight:300">Questions?<span style="animation:pulse-logo 1.2s infinite;display:inline-block;margin-left:4px;color:rgba(10,132,255,0.7)">_</span></div>
+</div>
+
+</div><!-- end slides-container -->
+
+
+
+<script>
+let current = 0;
+const total = 12;
+const slidesEl = document.querySelectorAll('.slide');
+const counterEl = document.getElementById('counter');
+const dotsEl = document.getElementById('dots');
+
+// Build dots
+for(let i=0;i<total;i++){
+  const d=document.createElement('div');
+  d.className='dot'+(i===0?' active':'');
+  d.onclick=()=>goTo(i);
+  dotsEl.appendChild(d);
+}
+
+// Generate particles for slide 1
+(function(){
+  const c=document.getElementById('particles-s1');
+  for(let i=0;i<14;i++){
+    const p=document.createElement('div');
+    const size=Math.random()*4+2;
+    const colors=['#0A84FF','#BF5AF2','#FF375F','#30D158','#FF9F0A'];
+    p.className='particle';
+    p.style.cssText=`width:${size}px;height:${size}px;left:${Math.random()*100}%;top:${Math.random()*100}%;background:${colors[Math.floor(Math.random()*colors.length)]};opacity:0.4;animation-duration:${6+Math.random()*8}s;animation-delay:${Math.random()*5}s`;
+    c.appendChild(p);
+  }
+})();
+
+function goTo(n){
+  const prev=slidesEl[current];
+  prev.classList.remove('active');
+  prev.classList.add('exit');
+  setTimeout(()=>prev.classList.remove('exit'),400);
+  current=n;
+  slidesEl[current].classList.add('active');
+  counterEl.textContent=(n+1).toString().padStart(2,'0')+' / '+total.toString().padStart(2,'0');
+  document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i===n));
+  if(n===8) startTypewriter();
+  if(n===10) startTerminal();
+}
+
+function changeSlide(dir){
+  const next=(current+dir+total)%total;
+  goTo(next);
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight')changeSlide(1);
+  if(e.key==='ArrowLeft')changeSlide(-1);
+});
+
+function startTypewriter(){
+  const el=document.getElementById('ai-text');
+  if(!el||el.dataset.done)return;
+  el.dataset.done='1';
+  const txt=el.dataset.text||'';
+  el.textContent='';
+  let i=0;
+  const iv=setInterval(()=>{if(i<txt.length){el.textContent+=txt[i++]}else clearInterval(iv)},22);
+}
+
+function startTerminal(){
+  const el=document.getElementById('terminal-lines');
+  if(!el||el.dataset.done)return;
+  el.dataset.done='1';
+  const lines=[
+    '$ git clone https://github.com/jojocoder28/watchdog',
+    '$ cp .env.example .env',
+    '$ docker compose up --build',
+    '✓ Backend running on :8000',
+    '✓ Frontend running on :3000',
+    '✓ Database initialized',
+    '✓ 50,000 logs generated',
+    '🚀 Platform ready'
+  ];
+  const colors=['#aaa','#aaa','#aaa','#30D158','#30D158','#30D158','#30D158','#fff'];
+  el.innerHTML='';
+  let li=0;
+  function nextLine(){
+    if(li>=lines.length)return;
+    const div=document.createElement('div');
+    div.style.color=colors[li];
+    div.style.marginBottom='6px';
+    div.style.fontFamily="'JetBrains Mono',monospace";
+    div.style.fontSize='14px';
+    div.textContent=lines[li];
+    el.appendChild(div);
+    li++;
+    setTimeout(nextLine,380);
+  }
+  setTimeout(nextLine,300);
+}
+</script>
+</body>
+</html>

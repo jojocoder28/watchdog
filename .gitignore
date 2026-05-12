@@ -1,0 +1,51 @@
+# Dependencies
+node_modules/
+venv/
+.venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Build outputs
+frontend/dist/
+backend/dist/
+*.egg-info/
+.next/
+
+# Environment variables (Never commit these!)
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+
+# Database & Storage
+*.db
+*.sqlite3
+dataset/dev.db
+dataset/watchdog.db
+dataset/simulated_emails/
+data/
+
+# IDE & Editor settings
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Docker
+.docker/

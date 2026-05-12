@@ -1,0 +1,8 @@
+Analyze the following incident metadata and log samples. Suggest the 2-3 most likely root causes for this incident. Provide reasoning for each hypothesis. Format your response as a numbered list. Do not include conversational filler.
+
+Incident Title: {title}
+Severity: {severity}
+Affected Service: {service}
+
+Log Samples:
+{logs}
